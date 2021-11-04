@@ -148,7 +148,7 @@ public:
 				{
 					unvisited.push_back(key);
 					unvisited2[key] = true;
-					answer[key] = answer[start_node];
+					answer[key] = answer[start_node]+1;
 				}
 
 			}
