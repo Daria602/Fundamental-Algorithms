@@ -2,10 +2,13 @@
 #include <fstream>
 #include <vector>
 #include <deque>
+#include <queue>
 #include <algorithm>
 #include <stack>
+#include <tuple>
 
 using namespace std;
+# define INF 0x3f3f3f3f
 
 ifstream fin("test.txt");
 
@@ -42,7 +45,7 @@ private:
 	//adj list for graph representation
 	vector<vector<int>> adj_list;
 public:
-
+	Graph() {}
 	Graph(int n, bool oriented) 
 	{
 		this->n = n;
@@ -447,8 +450,19 @@ public:
 		}
 	}
 	// find if a degree sequence can form a simple graph problem6
-	bool havel_hakimi(deque<int> degrees)
+	bool havel_hakimi()
 	{
+		int N;
+		fin >> N;
+		Graph graph(N, true); // just to use the functions from the class
+		deque<int> degrees;
+		for (int i = 0; i < N; i++)
+		{
+			int degree;
+			fin >> degree;
+			degrees.push_back(degree);
+		}
+
 		while (true)
 		{
 			degrees = count_sort_reverse(degrees);
@@ -528,15 +542,184 @@ public:
 		}
 	}
 
+	//minimum spanning tree algorithm 
+	// test (score 100) https://infoarena.ro/job_detail/2802275
+	void apm()
+	{
+		vector<vector<tuple<int, int>>> adj_list;
+		vector<tuple<int, int>> empty;
+		vector<bool> visited;
+		priority_queue<tuple<int, int, int>, vector<tuple<int, int, int>>, greater<tuple<int, int, int>> > pq;
+		vector<tuple<int, int>> answer;
+		int N, E;
+		fin >> N >> E;
+
+		for (int i = 0; i < N; i++)
+		{
+			adj_list.push_back(empty);
+			visited.push_back(false);
+		}
+
+		int edge1, edge2, cost;
+		for (int i = 0; i < E; i++)
+		{
+			fin >> edge1 >> edge2 >> cost;
+			edge1--;
+			edge2--;
+			adj_list[edge1].push_back(make_tuple(edge2, cost));
+			adj_list[edge2].push_back(make_tuple(edge1, cost));
+		}
+
+		int sum_apm = 0;
+		int optimized_nr_edges_answer = N - 1;
+		int optimized_nr_edges = N - 1;
+
+
+		int start_node = 0;
+
+		for (unsigned int i = 0; i < adj_list[start_node].size(); i++)
+		{
+			pq.push(make_tuple(get<1>(adj_list[start_node][i]), start_node, get<0>(adj_list[start_node][i])));
+		}
+
+		visited[start_node] = true;
+
+		while (!pq.empty() && optimized_nr_edges > 0)
+		{
+			tuple <int, int, int> mn;
+			mn = pq.top();
+			while (visited[get<2>(mn)])
+			{
+				pq.pop();
+				mn = pq.top();
+			}
+			sum_apm = sum_apm + get<0>(mn);
+			answer.push_back(make_tuple(get<1>(mn), get<2>(mn)));
+			pq.pop();
+			optimized_nr_edges--;
+			start_node = get<2>(mn);
+
+			for (unsigned int i = 0; i < adj_list[start_node].size(); i++)
+			{
+				if (!visited[get<0>(adj_list[start_node][i])])
+				{
+					pq.push(make_tuple(get<1>(adj_list[start_node][i]), start_node, get<0>(adj_list[start_node][i])));
+				}
+
+			}
+			visited[start_node] = true;
+		}
+		cout << sum_apm << "\n" << optimized_nr_edges_answer << "\n";
+
+		for (unsigned int i = 0; i < answer.size(); i++)
+		{
+			cout << get<0>(answer[i]) << " " << get<1>(answer[i])  << "\n";
+		}
+
+
+	}
+	//dijkstra's algorithm to find the shortest path from one vertex to the others
+	//test (score 90) https://infoarena.ro/job_detail/2802388
+	void dijkstra()
+	{
+		vector<vector<tuple<int, int>>> adj_list;
+		vector<tuple<int, int>> empty;
+		vector<bool> visited;
+		vector<int> distances;
+
+		//reading the values
+		int N, E;
+		fin >> N >> E;
+
+		for (int i = 0; i < N; i++)
+		{
+			adj_list.push_back(empty);
+			visited.push_back(false);
+			distances.push_back(INF);
+		}
+
+		int edge1, edge2, cost;
+		for (int i = 0; i < E; i++)
+		{
+			fin >> edge1 >> edge2 >> cost;
+			edge1--;
+			edge2--;
+			adj_list[edge1].push_back(make_tuple(edge2, cost));
+			//adj_list[edge2].push_back(make_tuple(edge1, cost));
+		}
+
+		//the algorithm
+		priority_queue<tuple<int, int>, vector<tuple<int, int>>, greater<tuple<int, int>> > pq;
+		distances[0] = 0;
+		pq.push(make_tuple(0, 0));
+
+		while (!pq.empty())
+		{
+			int node, dist;
+			node = get<1>(pq.top());
+			dist = get<1>(pq.top());
+			pq.pop();
+			visited[node] = true;
+
+			for (tuple<int, int> neighbour : adj_list[node])
+			{
+				if (visited[get<0>(neighbour)])
+				{
+					continue;
+				}
+
+				int new_dist = distances[node] + get<1>(neighbour);
+
+				if (new_dist < distances[get<0>(neighbour)])
+				{
+					distances[get<0>(neighbour)] = new_dist;
+					pq.push(make_tuple(new_dist, get<0>(neighbour)));
+				}
+			}
+
+		}
+
+
+		for (unsigned int i = 1; i < distances.size(); i++)
+		{
+			if (distances[i] == INF)
+			{
+				cout << "0 ";
+			}
+			else
+			{
+				cout << distances[i] << " ";
+			}
+		}
+	}
+
 };
 
-
-
-
-int main()
+pair<Graph,int> read_with_starting_node(bool orient)
 {
-	//for all the problems except havel-hakimi
-	/*
+	//number of nodes
+	int N;
+	//number of edges
+	int E;
+	//starting node
+	int SN;
+	fin >> N >> E;
+	
+	fin >> SN;
+
+	Graph graph(N, orient);
+	int n1, n2;
+	for (int i = 0; i < E; i++)
+	{
+		fin >> n1 >> n2;
+		graph.add_edge(n1, n2);
+	}
+
+	return make_pair(graph,SN);
+}
+
+Graph read_just_the_connections(bool orient)
+{
 	//number of nodes
 	int N;
 	//number of edges
@@ -548,35 +731,49 @@ int main()
 	//fin >> SN
 
 	//true if graph is oriented
-	Graph graph(N,true);
+	Graph graph(N, true);
 	int n1, n2;
 	for (int i = 0; i < E; i++)
 	{
 		fin >> n1 >> n2;
 		graph.add_edge(n1, n2);
 	}
-	graph.bfsinfoarena(SN);
-	graph.start_dfsinfoarena();
-	graph.biconnected_components();
-	graph.strongly_connected_components();
-	graph.topological_sort();
-	graph.critical_connections();
-	*/
+	return graph;
+}
 
 
-	//for havel-hakimi
+int main()
+{
+	//bool for graph, true if oriented
+	bool orient = false;
+
+	//for bfsinfoarena 
 	/*
-	int N;
-	fin >> N;
-	Graph graph(N, true); // just to use the functions from the class
-	deque<int> degrees;
-	for (int i = 0; i < N; i++)
-	{
-		int degree;
-		fin >> degree;
-		degrees.push_back(degree);
-	}
-	graph.havel_hakimi(degrees);
+	pair<Graph, int>  graph_and_start_node;
+	graph_and_start_node = read_with_starting_node(orient);
+
+	Graph graph = graph_and_start_node.first;
+	graph.bfsinfoarena(graph_and_start_node.second);
 	*/
+	
+	//for the problems below
+	//Graph graph;
+	//graph = read_just_the_connections(orient);
+
+	//graph.start_dfsinfoarena();
+	//graph.biconnected_components();
+	//graph.strongly_connected_components();
+	//graph.topological_sort();
+	//graph.critical_connections();
+
+	//for havel-hakimi, minimum spanning tree (apm), dijkstra
+
+	
+	Graph graph;
+	//graph.havel_hakimi();
+	//graph.apm();
+	//graph.dijkstra();
+
 	return 0;
+	
 }
