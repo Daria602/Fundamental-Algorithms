@@ -44,19 +44,34 @@ private:
 	bool oriented;
 	//adj list for graph representation
 	vector<vector<int>> adj_list;
+	vector<vector<pair<int, int>>> adj_list_with_costs;
 public:
 	Graph() {}
-	Graph(int n, bool oriented) 
+	Graph(int n, bool with_costs = false, bool oriented = true) 
 	{
 		this->n = n;
 		this->e = 0;
 		this->oriented = oriented;
 		//populate adj list with empty vectors
-		vector<int> empty;
-		for (int i = 0; i < n; i++)
+
+		if (!with_costs)
 		{
-			this->adj_list.push_back(empty);
+			vector<int> empty;
+			for (int i = 0; i < n; i++)
+			{
+				this->adj_list.push_back(empty);
+			}
 		}
+		else
+		{
+			vector<pair<int,int>> empty;
+			for (int i = 0; i < n; i++)
+			{
+				this->adj_list_with_costs.push_back(empty);
+			}
+		}
+
+		
 	}
 	virtual ~Graph() {}
 
@@ -69,6 +84,17 @@ public:
 		if (!this->oriented)
 		{
 			this->adj_list[node2].push_back(node1);
+		}
+	}
+	void add_edge_with_cost(int node1, int node2,int cost)
+	{
+		this->e++;
+		this->adj_list_with_costs[node1].push_back(make_pair(node2,cost));
+
+		//if graph is not oriented, then push from the second node
+		if (!this->oriented)
+		{
+			this->adj_list_with_costs[node2].push_back(make_pair(node1, cost));
 		}
 	}
 
@@ -589,31 +615,19 @@ public:
 
 	//minimum spanning tree algorithm 
 	// test (score 100) https://infoarena.ro/job_detail/2802275
-	tuple<int, int, vector<tuple<int, int>>> apm()
+	tuple<int, int, vector<pair<int, int>>> apm()
 	{
-		vector<vector<tuple<int, int>>> adj_list;
-		vector<tuple<int, int>> empty;
 		vector<bool> visited;
 		priority_queue<tuple<int, int, int>, vector<tuple<int, int, int>>, greater<tuple<int, int, int>> > pq;
-		vector<tuple<int, int>> answer;
+		vector<pair<int, int>> answer;
 		int N, E;
 		fin >> N >> E;
 
 		for (int i = 0; i < N; i++)
 		{
-			adj_list.push_back(empty);
 			visited.push_back(false);
 		}
 
-		int edge1, edge2, cost;
-		for (int i = 0; i < E; i++)
-		{
-			fin >> edge1 >> edge2 >> cost;
-			edge1--;
-			edge2--;
-			adj_list[edge1].push_back(make_tuple(edge2, cost));
-			adj_list[edge2].push_back(make_tuple(edge1, cost));
-		}
 
 		int sum_apm = 0;
 		int optimized_nr_edges_answer = N - 1;
@@ -622,9 +636,9 @@ public:
 
 		int start_node = 0;
 
-		for (unsigned int i = 0; i < adj_list[start_node].size(); i++)
+		for (unsigned int i = 0; i < this->adj_list_with_costs[start_node].size(); i++)
 		{
-			pq.push(make_tuple(get<1>(adj_list[start_node][i]), start_node, get<0>(adj_list[start_node][i])));
+			pq.push(make_tuple(this->adj_list_with_costs[start_node][i].second, start_node, this->adj_list_with_costs[start_node][i].first));
 		}
 
 		visited[start_node] = true;
@@ -639,22 +653,22 @@ public:
 				mn = pq.top();
 			}
 			sum_apm = sum_apm + get<0>(mn);
-			answer.push_back(make_tuple(get<1>(mn), get<2>(mn)));
+			answer.push_back(make_pair(get<1>(mn), get<2>(mn)));
 			pq.pop();
 			optimized_nr_edges--;
 			start_node = get<2>(mn);
 
 			for (unsigned int i = 0; i < adj_list[start_node].size(); i++)
 			{
-				if (!visited[get<0>(adj_list[start_node][i])])
+				if (!visited[this->adj_list_with_costs[start_node][i].first])
 				{
-					pq.push(make_tuple(get<1>(adj_list[start_node][i]), start_node, get<0>(adj_list[start_node][i])));
+					pq.push(make_tuple(this->adj_list_with_costs[start_node][i].second, start_node, this->adj_list_with_costs[start_node][i].first));
 				}
 
 			}
 			visited[start_node] = true;
 		}
-		tuple<int, int, vector<tuple<int, int>>> result;
+		tuple<int, int, vector<pair<int, int>>> result;
 		result = make_tuple(sum_apm, optimized_nr_edges_answer, answer);
 
 		return result;
@@ -667,8 +681,6 @@ public:
 	//test (score 90) https://infoarena.ro/job_detail/2813068
 	vector<int> dijkstra()
 	{
-		vector<vector<tuple<int, int>>> adj_list;
-		vector<tuple<int, int>> empty;
 		vector<bool> visited;
 		vector<int> distances;
 
@@ -678,24 +690,15 @@ public:
 
 		for (int i = 0; i < N; i++)
 		{
-			adj_list.push_back(empty);
 			visited.push_back(false);
 			distances.push_back(INF);
 		}
 
-		int edge1, edge2, cost;
-		for (int i = 0; i < E; i++)
-		{
-			fin >> edge1 >> edge2 >> cost;
-			edge1--;
-			edge2--;
-			adj_list[edge1].push_back(make_tuple(edge2, cost));
-			//adj_list[edge2].push_back(make_tuple(edge1, cost));
-		}
 
 		//the algorithm
 		//min-heap sort by cost
 		priority_queue<tuple<int, int>, vector<tuple<int, int>>, greater<tuple<int, int>> > pq;
+
 		//distance from the first node to itself is 0
 		// push initial node to heap
 		int initial_node = 0;
@@ -710,21 +713,21 @@ public:
 			pq.pop();
 			visited[node] = true;
 
-			for (tuple<int, int> neighbour : adj_list[node])
+			for (pair<int, int> neighbour : this->adj_list_with_costs[node])
 			{
-				if (visited[get<0>(neighbour)])
+				if (visited[neighbour.first])
 				{
 					continue;
 				}
 
-				int new_dist = distances[node] + get<1>(neighbour);
+				int new_dist = distances[node] + neighbour.second;
 
-				if (new_dist < distances[get<0>(neighbour)])
+				if (new_dist < distances[neighbour.first])
 				{
-					distances[get<0>(neighbour)] = new_dist;
-					if (!visited[get<0>(neighbour)])
+					distances[neighbour.first] = new_dist;
+					if (!visited[neighbour.first])
 					{
-						pq.push(make_tuple(new_dist, get<0>(neighbour)));
+						pq.push(make_tuple(new_dist, neighbour.first));
 					}
 				}
 			}
@@ -900,24 +903,6 @@ public:
 	//test (score 100) https://infoarena.ro/job_detail/2820094
 	int hamilton_cycle_min_cost()
 	{
-		fin >> this->n;
-		vector<vector<pair<int, int> >> adj_list_with_cost;
-		vector<pair<int, int>> empty;
-		for (int i = 0; i < this->n; i++)
-		{
-			adj_list_with_cost.push_back(empty);
-		}
-		int edges;
-		fin >> edges;
-		this->e = edges;
-		for (int i = 0; i < this->e; i++)
-		{
-			int n1, n2, cost;
-			fin >> n1 >> n2 >> cost;
-			adj_list_with_cost[n1].push_back(make_pair(n2, cost));
-
-		}
-
 		int answer = INF;
 		int nr_nodes = 1 << this->n;
 
@@ -933,24 +918,77 @@ public:
 			{
 				if (i & (1 << j))
 				{
-					for (int k = 0; k < adj_list_with_cost[j].size(); k++)
+					for (int k = 0; k < this->adj_list_with_costs[j].size(); k++)
 					{
-						if (i & (1 << adj_list_with_cost[j][k].first))
+						if (i & (1 << this->adj_list_with_costs[j][k].first))
 						{
-							costs[i][j] = min(costs[i][j], costs[i ^ (1 << j)][adj_list_with_cost[j][k].first] + adj_list_with_cost[j][k].second);
+							costs[i][j] = min(costs[i][j], costs[i ^ (1 << j)][this->adj_list_with_costs[j][k].first] + this->adj_list_with_costs[j][k].second);
 						}
 					}
 				}
 			}
 		}
 
-		for (int i = 0; i < adj_list_with_cost[0].size(); i++)
+		for (int i = 0; i < this->adj_list_with_costs[0].size(); i++)
 		{
-			answer = min(answer, costs[nr_nodes - 1][adj_list_with_cost[0][i].first] + adj_list_with_cost[0][i].second);
+			answer = min(answer, costs[nr_nodes - 1][this->adj_list_with_costs[0][i].first] + this->adj_list_with_costs[0][i].second);
 		}
 		return answer;
 
 
+	}
+
+	//bellman-ford algorithm to detect negative cycles and (if none exist) find the distance from source node to the others 
+	// 	   // remark: function returns vector of size 0 if negative cycle was detected
+	//test (score 100) https://infoarena.ro/job_detail/2822005
+	vector<int> bellmanford()
+	{
+
+		queue<int> que;
+		vector<bool> in_queue(this->n + 1, false);
+		vector<int> distances(this->n + 1, INF);
+		vector<int> times_in_queue(this->n + 1, 0);
+		vector<int> negative_cycle;
+		int source = 0;
+		distances[source] = 0;
+		que.push(source);
+		in_queue[source] = true;
+
+		while (!que.empty())
+		{
+			int node = que.front();
+			que.pop();
+			in_queue[node] = false;
+
+			for (int i = 0; i < this->adj_list_with_costs[node].size(); i++)
+			{
+				pair<int, int> neighbour_with_cost = this->adj_list_with_costs[node][i];
+				int neighbour = neighbour_with_cost.first;
+				int cost = neighbour_with_cost.second;
+
+				if (distances[neighbour] > distances[node] + cost)
+				{
+					distances[neighbour] = distances[node] + cost;
+					times_in_queue[neighbour]++;
+
+					if (times_in_queue[neighbour] >= this->n)
+					{
+						return negative_cycle;
+					}
+
+					if (!in_queue[neighbour])
+					{
+						que.push(neighbour);
+						in_queue[neighbour] = true;
+					}
+				}
+
+
+
+			}
+		}
+
+		return distances;
 	}
 
 };
@@ -1001,6 +1039,24 @@ Graph read_just_the_connections(bool orient)
 	return graph;
 }
 
+Graph read_connections_with_costs()
+{
+	int N, E;
+	fin >> N >> E;
+	//modify bool if not oriented
+	Graph graph(N, true);
+	for (int i = 0; i < E; i++)
+	{
+		int node1, node2, cost;
+		fin >> node1 >> node2 >> cost;
+		graph.add_edge_with_cost(node1, node2, cost);
+	}
+
+	return graph;
+
+}
+
+
 
 int main()
 {
@@ -1026,20 +1082,24 @@ int main()
 	//vector<int> result_top_sort = graph.topological_sort();
 	//vector<vector<int>> result_cc = graph.critical_connections();
 
-	//for the rest
 
-	
-	//Graph graph;
-	//bool result_havel_hakimi = graph.havel_hakimi();
+	//for the problems below
+	//Graph graph = read_connections_with_costs();
 	//tuple<int, int, vector<tuple<int, int>>> result_apm = graph.apm();
-	
-	
+	//int result_ham = graph.hamilton_cycle_min_cost();
+	//vector<int> result_bellmanford = graph.bellmanford(); 
 	//vector<int> result_dijkstra = graph.dijkstra();
 
+
+	//for the problems below
+	// 	   //remark: the reading is more specific and is done in the functions!!!
+	//Graph graph;
+	//bool result_havel_hakimi = graph.havel_hakimi();
+	//vector<int> result_euler_cycle = graph.euler_cycle();
 	//vector<vector<int>> result_royfloyd = graph.royfloyd();
 
-	//vector<int> result_euler_cycle = graph.euler_cycle();
-	//int result_ham = graph.hamilton_cycle_min_cost();
+	
+	
 
 	//for diameter of n-ary tree
 	/*
@@ -1048,6 +1108,8 @@ int main()
 	Graph g(N, false);
 	int result_darb = g.darb();
 	*/
+
+
 
 	return 0;
 	
